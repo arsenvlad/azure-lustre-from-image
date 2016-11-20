@@ -1,0 +1,45 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "apiVersions": {
+      "type": "object",
+      "metadata": {
+        "description": "apiVersions JSON object passed from the main template"
+      }
+    },
+    "providerTags": {
+      "type": "object",
+      "metadata": {
+        "description": "Provider tags"
+      }
+    },
+    "location": {
+      "type": "string",
+      "metadata": {
+        "description": "Location for the Lustre nodes"
+      }
+    },
+    "imageName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the managed disks image to create from the blob"
+      }
+    },
+    "imageOSDiskBlobUri": {
+      "type": "string",
+      "metadata": {
+        "description": "URL of the OS disk blob from which to create managed image"
+      }
+    }
+  },
+  "variables": {
+    
+  },
+  "resources": [
+
+  ],
+  "outputs": {
+
+  }
+}

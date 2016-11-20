@@ -1,1 +1,1 @@
-# azure-lustre-from-image
+# Deploying Lustre cluster using managed disks and image created from blob

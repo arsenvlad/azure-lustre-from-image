@@ -1,0 +1,886 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "artifactsBaseUrl": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Base URL of the solution template gallery package",
+        "artifactsBaseUrl": ""
+      }
+    },
+    "providerTags": {
+      "type": "object",
+      "defaultValue": {
+        "provider": "628FED33-0F92-460A-9F5D-817ECC0E109B"
+      },
+      "metadata": {
+        "description": "Provider tags"
+      }
+    },
+    "location": {
+      "type": "string",
+      "metadata": {
+        "description": "Location for the Lustre nodes"
+      }
+    },
+    "imageResourceGroup": {
+      "type": "string",
+      "metadata": {
+        "description": "Resource group of the existing managed disk image"
+      }
+    },
+    "imageNewOrExisting": {
+      "type": "string",
+      "defaultValue": "new",
+      "allowedValues": [
+        "new",
+        "existing"
+      ],
+      "metadata": {
+        "description": "Parameter that specifies if an new or an existing managed disk image should be used for deployment"
+      }
+    },
+    "imageName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the managed disks image to create from the blob"
+      }
+    },
+    "imageOSDiskBlobUri": {
+      "type": "string",
+      "metadata": {
+        "description": "URL of the OS disk blob from which to create managed image"
+      }
+    },
+    "storageAccountType": {
+      "type": "string",
+      "defaultValue": "Premium_LRS",
+      "metadata": {
+        "description": "Storage account type (e.g. Premium_LRS or Standard_LRS)"
+      }
+    },
+    "vmNamePrefix": {
+      "type": "string",
+      "defaultValue": "lustre",
+      "metadata": {
+        "description": "Prefix that will be used for all virtual machines in this Lustre cluster (e.g. lustre)"
+      }
+    },
+    "adminUsername": {
+      "type": "string",
+      "defaultValue": "azureuser",
+      "metadata": {
+        "description": "Admin username for the virtual machines"
+      }
+    },
+    "adminPassword": {
+      "type": "securestring",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Admin password for the virtual machines"
+      }
+    },
+    "sshPublicKey": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "SSH public key that will be included on all nodes in the Lustre cluster. The OpenSSH public key can be generated with tools like ssh-keygen on Linux or OS X."
+      }
+    },
+    "authenticationType": {
+      "type": "string",
+      "defaultValue": "password",
+      "allowedValues": [
+        "password",
+        "sshPublicKey"
+      ],
+      "metadata": {
+        "description": "Authentication type for the virtual machines"
+      }
+    },
+    "publicIPAddressNewOrExisting": {
+      "type": "string",
+      "defaultValue": "new",
+      "allowedValues": [
+        "new",
+        "existing"
+      ],
+      "metadata": {
+        "description": "Parameter that specifies if an new or an existing public IP should be used for deployment"
+      }
+    },
+    "publicIPAddressResourceGroup": {
+      "type": "string",
+      "metadata": {
+        "description": "Public IP resource group for cases when existing public IP is used"
+      }
+    },
+    "publicIPAddressName": {
+      "type": "string",
+      "defaultValue": "publicip-lustre",
+      "metadata": { "description": "Public IP Address name" }
+    },
+    "publicIPAddressDomainNameLabel": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": { "description": "Public IP DNS label" }
+    },
+    "mgsVmSize": {
+      "type": "string",
+      "defaultValue": "Standard_DS2",
+      "metadata": {
+        "description": "Size of the Management Server (MGS) that stores configuration information for all Lustre filesystems in a cluster."
+      }
+    },
+    "mdsVmSize": {
+      "type": "string",
+      "defaultValue": "Standard_DS2",
+      "metadata": {
+        "description": "Size of the Metadata Server (MDS) that makes metadata (e.g. files, directories, permissions) available to Lustre clients"
+      }
+    },
+    "ossVmSize": {
+      "type": "string",
+      "defaultValue": "Standard_DS3",
+      "metadata": {
+        "description": "Size of the Object Storage Server (OSS) that provides file I/O service and network request handling for one or more attached disks referred to as Object Storage Target (OST)"
+      }
+    },
+    "ossCount": {
+      "type": "int",
+      "defaultValue": 2,
+      "metadata": {
+        "description": "The number of virtual machines instances to provision for OSS servers"
+      }
+    },
+    "ossDiskSize": {
+      "type": "int",
+      "defaultValue": 128,
+      "metadata": {
+        "description": "Size of the data disks to use for the OSTs. All OSS instances have 3 data disks attached."
+      }
+    },
+    "filesystemName": {
+      "type": "string",
+      "defaultValue": "scratch",
+      "metadata": {
+        "description": "Name of the Lustre filesytem (e.g. scratch, lustre, shared_data) that will be mounted from clients as mgsip@tcp0:/filesystemname"
+      }
+    },
+    "vnetResourceGroup": {
+      "type": "string",
+      "metadata": {
+        "description": "Virtual Network Resource Group for cases when Lustre nodes are deployed into an existing VNet"
+      }
+    },
+    "vnetName": {
+      "type": "string",
+      "defaultValue": "vnet-lustre",
+      "metadata": {
+        "description": "Virtual Network name"
+      }
+    },
+    "vnetNewOrExisting": {
+      "type": "string",
+      "defaultValue": "new",
+      "allowedValues": [
+        "new",
+        "existing"
+      ],
+      "metadata": {
+        "description": "Parameter that specifies if an new or an existing virtual network should be used for deploying Lustre nodes"
+      }
+    },
+    "vnetAddressPrefix": {
+      "type": "string",
+      "defaultValue": "10.1.0.0/16",
+      "metadata": {
+        "description": "Virtual Network Address Prefix (i.e. CIDR)"
+      }
+    },
+    "subnetServersName": {
+      "type": "string",
+      "defaultValue": "subnet-lustre-servers",
+      "metadata": {
+        "description": "Lustre servers will be deployed into this subnet within the Virtual Network"
+      }
+    },
+    "subnetServersAddressPrefix": {
+      "type": "string",
+      "defaultValue": "10.1.0.0/24",
+      "metadata": {
+        "description": "Virtual Network Lustre Servers subnet Address Prefix (i.e. CIDR)"
+      }
+    },
+    "subnetClientsName": {
+      "type": "string",
+      "defaultValue": "subnet-lustre-clients",
+      "metadata": {
+        "description": "Lustre clients can be deployed into this subnet within the Virtual Network"
+      }
+    },
+    "subnetClientsAddressPrefix": {
+      "type": "string",
+      "defaultValue": "10.1.1.0/24",
+      "metadata": {
+        "description": "Virtual Network Lustre Clients subnet Address Prefix (i.e. CIDR)"
+      }
+    }
+  },
+  "variables": {
+    "apiVersions": {
+      "resources": {
+        "deployments": "2016-09-01"
+      },
+      "storage": {
+        "storageAccounts": "2016-05-01"
+      },
+      "network": {
+        "virtualNetworks": "2016-09-01",
+        "networkInterfaces": "2016-09-01",
+        "loadBalancers": "2016-09-01",
+        "publicIPAddresses": "2016-09-01",
+        "networkSecurityGroups": "2016-09-01"
+      },
+      "compute": {
+        "availabilitySets": "2016-04-30-preview",
+        "virtualMachines": "2016-04-30-preview",
+        "virtualMachineExtensions": "2016-04-30-preview",
+        "disks": "2016-04-30-preview",
+        "images": "2016-04-30-preview"
+      }
+    },
+    "ossAvailabilitySetSettings": {
+      "name": "[concat(parameters('vmNamePrefix'),'oss')]",
+      "faultDomainCount": "3",
+      "updateDomainCount": "5",
+      "managed": true
+    },
+    "baseUrl": "[concat(parameters('artifactsBaseUrl'),'/')]",
+    "scriptUrlLustre": "[concat(variables('baseUrl'),'lustre.sh')]",
+    "scriptUrlMonitoring": "[concat(variables('baseUrl'),'monitoring.sh')]",
+    "templateUrlImage": "[concat(variables('baseUrl'),'image-',parameters('imageNewOrExisting'),'.json')]",
+    "templateUrlPublicIP": "[concat(variables('baseUrl'),'publicIP-',parameters('publicIPAddressNewOrExisting'),'.json')]",
+    "templateUrlVnet": "[concat(variables('baseUrl'),'vnet-',parameters('vnetNewOrExisting'),'.json')]",
+    "templateUrlMonitoring": "[concat(variables('baseUrl'),'monitoring.json')]",
+    "sshKeyPath": "[concat('/home/',parameters('adminUsername'),'/.ssh/authorized_keys')]",
+    "linuxConfiguration_sshPublicKey": {
+      "disablePasswordAuthentication": "true",
+      "ssh": {
+        "publicKeys": [
+          {
+            "path": "[variables('sshKeyPath')]",
+            "keyData": "[parameters('sshPublicKey')]"
+          }
+        ]
+      }
+    },
+    "linuxConfiguration_password": { },
+    "linuxConfiguration": "[variables(concat('linuxConfiguration_',parameters('authenticationType')))]",
+    "publicIPID": "[resourceId(parameters('publicIPAddressResourceGroup'), 'Microsoft.Network/publicIPAddresses', parameters('publicIPAddressName'))]",
+    "vnetID": "[resourceId(parameters('vnetResourceGroup'), 'Microsoft.Network/virtualNetworks', parameters('vnetName'))]",
+    "subnetServersID": "[concat(variables('vnetID'), '/subnets/', parameters('subnetServersName'))]",
+    "subnetClientsID": "[concat(variables('vnetID'), '/subnets/', parameters('subnetClientsName'))]",
+    "mgsStorageAccountNumber": "1",
+    "mdsStorageAccountNumber": "1",
+    "mgsDiskCount": "2",
+    "mdsDiskCount": "1",
+    "ossDiskCount": "3",
+    "diagnosticsStorageAccount": "[concat('d',uniqueString(resourceGroup().id,'d'),parameters('vmNamePrefix'))]"
+  },
+  "resources": [
+    {
+      "apiVersion": "[variables('apiVersions').resources.deployments]",
+      "type": "Microsoft.Resources/deployments",
+      "name": "image",
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('templateUrlImage')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "apiVersions": {
+            "value": "[variables('apiVersions')]"
+          },
+          "providerTags": {
+            "value": "[parameters('providerTags')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "imageName": {
+            "value": "[parameters('imageName')]"
+          },
+          "imageOSDiskBlobUri": {
+            "value": "[parameters('imageOSDiskBlobUri')]"
+          }
+        }
+      }
+    },
+    {
+      "apiVersion": "[variables('apiVersions').storage.storageAccounts]",
+      "type": "Microsoft.Storage/storageAccounts",
+      "name": "[variables('diagnosticsStorageAccount')]",
+      "location": "[parameters('location')]",
+      "kind": "Storage",
+      "sku": {
+        "name": "Standard_LRS"
+      },
+      "tags": {
+        "provider": "[toUpper(parameters('providerTags').provider)]"
+      },
+      "properties": {
+      }
+    },
+    {
+      "apiVersion": "[variables('apiVersions').resources.deployments]",
+      "type": "Microsoft.Resources/deployments",
+      "name": "vnet",
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('templateUrlVnet')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "apiVersions": {
+            "value": "[variables('apiVersions')]"
+          },
+          "providerTags": {
+            "value": "[parameters('providerTags')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "vnetName": {
+            "value": "[parameters('vnetName')]"
+          },
+          "vnetResourceGroup": {
+            "value": "[parameters('vnetResourceGroup')]"
+          },
+          "vnetAddressPrefix": {
+            "value": "[parameters('vnetAddressPrefix')]"
+          },
+          "subnetServersName": {
+            "value": "[parameters('subnetServersName')]"
+          },
+          "subnetServersAddressPrefix": {
+            "value": "[parameters('subnetServersAddressPrefix')]"
+          },
+          "subnetClientsName": {
+            "value": "[parameters('subnetClientsName')]"
+          },
+          "subnetClientsAddressPrefix": {
+            "value": "[parameters('subnetClientsAddressPrefix')]"
+          }
+        }
+      }
+    },
+    {
+      "apiVersion": "[variables('apiVersions').compute.availabilitySets]",
+      "type": "Microsoft.Compute/availabilitySets",
+      "name": "[variables('ossAvailabilitySetSettings').name]",
+      "location": "[parameters('location')]",
+      "tags": {
+        "provider": "[toUpper(parameters('providerTags').provider)]"
+      },
+      "properties": {
+        "platformFaultDomainCount": "[variables('ossAvailabilitySetSettings').faultDomainCount]",
+        "platformUpdateDomainCount": "[variables('ossAvailabilitySetSettings').updateDomainCount]",
+        "managed": "[variables('ossAvailabilitySetSettings').managed]"
+      }
+    },
+    {
+      "apiVersion": "[variables('apiVersions').resources.deployments]",
+      "type": "Microsoft.Resources/deployments",
+      "name": "publicIP",
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('templateUrlPublicIP')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "apiVersions": {
+            "value": "[variables('apiVersions')]"
+          },
+          "providerTags": {
+            "value": "[parameters('providerTags')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "publicIPAddressName": {
+            "value": "[parameters('publicIPAddressName')]"
+          },
+          "publicIPAddressType": {
+            "value": "Dynamic"
+          },
+          "publicIPAddressDomainNameLabel": {
+            "value": "[parameters('publicIPAddressDomainNameLabel')]"
+          },
+          "publicIPAddressResourceGroup": {
+            "value": "[parameters('publicIPAddressResourceGroup')]"
+          }
+        }
+      }
+    },
+    {
+      "apiVersion": "[variables('apiVersions').network.networkInterfaces]",
+      "type": "Microsoft.Network/networkInterfaces",
+      "name": "[concat(parameters('vmNamePrefix'),'mgs')]",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "[concat('Microsoft.Resources/deployments/', 'vnet')]",
+        "[concat('Microsoft.Resources/deployments/', 'publicIP')]"
+      ],
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "ip1",
+            "properties": {
+              "privateIPAllocationMethod": "Dynamic",
+              "publicIPAddress": {
+                "id": "[variables('publicIPID')]"
+              },
+              "subnet": {
+                "id": "[variables('subnetServersID')]"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "[variables('apiVersions').compute.virtualMachines]",
+      "type": "Microsoft.Compute/virtualMachines",
+      "name": "[concat(parameters('vmNamePrefix'),'mgs')]",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "[concat('Microsoft.Network/networkInterfaces/', parameters('vmNamePrefix'), 'mgs')]",
+        "[concat('Microsoft.Storage/storageAccounts/', variables('diagnosticsStorageAccount'))]",
+        "[concat('Microsoft.Resources/deployments/', 'image')]"
+      ],
+      "tags": {
+        "LustreType": "mgt",
+        "provider": "[toUpper(parameters('providerTags').provider)]"
+      },
+      "properties": {
+        "hardwareProfile": {
+          "vmSize": "[parameters('mgsVmSize')]"
+        },
+        "osProfile": {
+          "computerName": "[concat(parameters('vmNamePrefix'),'mgs')]",
+          "adminUserName": "[parameters('adminUsername')]",
+          "adminPassword": "[parameters('adminPassword')]",
+          "linuxConfiguration": "[variables('linuxConfiguration')]"
+        },
+        "storageProfile": {
+          "imageReference": {
+            "id": "[resourceId(parameters('imageResourceGroup'), 'Microsoft.Compute/images', parameters('imageName'))]"
+          },
+          "osDisk": {
+            "caching": "ReadWrite",
+            "createOption": "FromImage",
+            "managedDisk": {
+              "storageAccountType": "[parameters('storageAccountType')]"
+            }
+          },
+          "dataDisks": [
+            {
+              "diskSizeGB": "128",
+              "lun": 0,
+              "caching": "None",
+              "createOption": "Empty",
+              "managedDisk": {
+                "storageAccountType": "[parameters('storageAccountType')]"
+              }
+            },
+            {
+              "diskSizeGB": "128",
+              "lun": 1,
+              "caching": "None",
+              "createOption": "Empty",
+              "managedDisk": {
+                "storageAccountType": "[parameters('storageAccountType')]"
+              }
+            }
+          ]
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces',concat(parameters('vmNamePrefix'),'mgs'))]"
+            }
+          ]
+        },
+        "diagnosticsProfile": {
+          "bootDiagnostics": {
+            "enabled": "true",
+            "storageUri": "[concat('http://', variables('diagnosticsStorageAccount'), '.blob.core.windows.net')]"
+          }
+        }
+      }
+    },
+    {
+      "apiVersion": "[variables('apiVersions').compute.virtualMachineExtensions]",
+      "type": "Microsoft.Compute/virtualMachines/extensions",
+      "name": "[concat(parameters('vmNamePrefix'), 'mgs', '/init')]",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "[concat('Microsoft.Compute/virtualMachines/', concat(parameters('vmNamePrefix'), 'mgs'))]"
+      ],
+      "tags": {
+        "provider": "[toUpper(parameters('providerTags').provider)]"
+      },
+      "properties": {
+        "publisher": "Microsoft.Azure.Extensions",
+        "type": "CustomScript",
+        "typeHandlerVersion": "2.0",
+        "autoUpgradeMinorVersion": true,
+        "settings": {
+          "fileUris": [
+            "[variables('scriptUrlLustre')]"
+          ],
+          "commandToExecute": "[concat('sh lustre.sh', ' -n MGS', ' -i 0', ' -d ', variables('mgsDiskCount'), ' -m ', reference(resourceId('Microsoft.Network/networkInterfaces', concat(parameters('vmNamePrefix'), 'mgs'))).ipConfigurations[0].properties.privateIPAddress, ' -l ', reference(resourceId('Microsoft.Network/networkInterfaces', concat(parameters('vmNamePrefix'), 'mgs'))).ipConfigurations[0].properties.privateIPAddress, ' -f ', parameters('filesystemName'))]"
+        }
+      }
+    },
+    {
+      "apiVersion": "[variables('apiVersions').network.networkInterfaces]",
+      "type": "Microsoft.Network/networkInterfaces",
+      "name": "[concat(parameters('vmNamePrefix'),'mds')]",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "[concat('Microsoft.Resources/deployments/', 'vnet')]",
+        "[concat('Microsoft.Network/networkInterfaces/', parameters('vmNamePrefix'), 'mgs')]"
+      ],
+      "tags": {
+        "provider": "[toUpper(parameters('providerTags').provider)]"
+      },
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "ip1",
+            "properties": {
+              "privateIPAllocationMethod": "Dynamic",
+              "subnet": {
+                "id": "[variables('subnetServersID')]"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "[variables('apiVersions').compute.virtualMachines]",
+      "type": "Microsoft.Compute/virtualMachines",
+      "name": "[concat(parameters('vmNamePrefix'),'mds')]",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "[concat('Microsoft.Network/networkInterfaces/', parameters('vmNamePrefix'), 'mds')]",
+        "[concat('Microsoft.Storage/storageAccounts/', variables('diagnosticsStorageAccount'))]",
+        "[concat('Microsoft.Resources/deployments/', 'image')]"
+      ],
+      "tags": {
+        "LustreType": "mdt",
+        "provider": "[toUpper(parameters('providerTags').provider)]"
+      },
+      "properties": {
+        "hardwareProfile": {
+          "vmSize": "[parameters('mdsVmSize')]"
+        },
+        "osProfile": {
+          "computerName": "[concat(parameters('vmNamePrefix'),'mds')]",
+          "adminUserName": "[parameters('adminUsername')]",
+          "adminPassword": "[parameters('adminPassword')]",
+          "linuxConfiguration": "[variables('linuxConfiguration')]"
+        },
+        "storageProfile": {
+          "imageReference": {
+            "id": "[resourceId(parameters('imageResourceGroup'), 'Microsoft.Compute/images', parameters('imageName'))]"
+          },
+          "osDisk": {
+            "caching": "ReadWrite",
+            "createOption": "FromImage",
+            "managedDisk": {
+              "storageAccountType": "[parameters('storageAccountType')]"
+            }
+          },
+          "dataDisks": [
+            {
+              "diskSizeGB": "128",
+              "lun": 0,
+              "caching": "None",
+              "createOption": "Empty",
+              "managedDisk": {
+                "storageAccountType": "[parameters('storageAccountType')]"
+              }
+            }
+          ]
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces',concat(parameters('vmNamePrefix'),'mds'))]"
+            }
+          ]
+        },
+        "diagnosticsProfile": {
+          "bootDiagnostics": {
+            "enabled": "true",
+            "storageUri": "[concat('http://', variables('diagnosticsStorageAccount'), '.blob.core.windows.net')]"
+          }
+        }
+      }
+    },
+    {
+      "apiVersion": "[variables('apiVersions').compute.virtualMachineExtensions]",
+      "type": "Microsoft.Compute/virtualMachines/extensions",
+      "name": "[concat(parameters('vmNamePrefix'), 'mds', '/init')]",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "[concat('Microsoft.Compute/virtualMachines/', concat(parameters('vmNamePrefix'), 'mds'))]",
+        "[concat('Microsoft.Compute/virtualMachines/', parameters('vmNamePrefix'), 'mgs', '/extensions/init')]"
+      ],
+      "tags": {
+        "provider": "[toUpper(parameters('providerTags').provider)]"
+      },
+      "properties": {
+        "publisher": "Microsoft.Azure.Extensions",
+        "type": "CustomScript",
+        "typeHandlerVersion": "2.0",
+        "autoUpgradeMinorVersion": true,
+        "settings": {
+          "fileUris": [
+            "[variables('scriptUrlLustre')]"
+          ],
+          "commandToExecute": "[concat('sh lustre.sh', ' -n MDS', ' -i 0', ' -d ', variables('mdsDiskCount'), ' -m ', reference(resourceId('Microsoft.Network/networkInterfaces', concat(parameters('vmNamePrefix'), 'mgs'))).ipConfigurations[0].properties.privateIPAddress, ' -l ', reference(resourceId('Microsoft.Network/networkInterfaces', concat(parameters('vmNamePrefix'), 'mds'))).ipConfigurations[0].properties.privateIPAddress, ' -f ', parameters('filesystemName'))]"
+        }
+      }
+    },
+    {
+      "apiVersion": "[variables('apiVersions').network.networkInterfaces]",
+      "type": "Microsoft.Network/networkInterfaces",
+      "name": "[concat(parameters('vmNamePrefix'), 'oss', copyIndex())]",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "[concat('Microsoft.Resources/deployments/', 'vnet')]",
+        "[concat('Microsoft.Network/networkInterfaces/', parameters('vmNamePrefix'), 'mds')]"
+      ],
+      "copy": {
+        "name": "ossNicCopy",
+        "count": "[parameters('ossCount')]"
+      },
+      "tags": {
+        "provider": "[toUpper(parameters('providerTags').provider)]"
+      },
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "ip1",
+            "properties": {
+              "privateIPAllocationMethod": "Dynamic",
+              "subnet": {
+                "id": "[variables('subnetServersID')]"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "[variables('apiVersions').compute.virtualMachines]",
+      "type": "Microsoft.Compute/virtualMachines",
+      "name": "[concat(parameters('vmNamePrefix'), 'oss', copyIndex())]",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "[concat('Microsoft.Network/networkInterfaces/', parameters('vmNamePrefix'), 'oss', copyIndex())]",
+        "[concat('Microsoft.Storage/storageAccounts/', variables('diagnosticsStorageAccount'))]",
+        "[concat('Microsoft.Resources/deployments/', 'image')]"
+      ],
+      "copy": {
+        "name": "ossVmCopy",
+        "count": "[parameters('ossCount')]"
+      },
+      "tags": {
+        "LustreType": "ost",
+        "provider": "[toUpper(parameters('providerTags').provider)]"
+      },
+      "properties": {
+        "availabilitySet": {
+          "id": "[resourceId('Microsoft.Compute/availabilitySets', variables('ossAvailabilitySetSettings').name)]"
+        },
+        "hardwareProfile": {
+          "vmSize": "[parameters('ossVmSize')]"
+        },
+        "osProfile": {
+          "computerName": "[concat(parameters('vmNamePrefix'), 'oss', copyIndex())]",
+          "adminUserName": "[parameters('adminUsername')]",
+          "adminPassword": "[parameters('adminPassword')]",
+          "linuxConfiguration": "[variables('linuxConfiguration')]"
+        },
+        "storageProfile": {
+          "imageReference": {
+            "id": "[resourceId(parameters('imageResourceGroup'), 'Microsoft.Compute/images', parameters('imageName'))]"
+          },
+          "osDisk": {
+            "caching": "ReadWrite",
+            "createOption": "FromImage"
+          },
+          "dataDisks": [
+            {
+              "diskSizeGB": "[parameters('ossDiskSize')]",
+              "lun": 0,
+              "caching": "None",
+              "createOption": "Empty",
+              "managedDisk": {
+                "storageAccountType": "[parameters('storageAccountType')]"
+              }
+            },
+            {
+              "diskSizeGB": "[parameters('ossDiskSize')]",
+              "lun": 1,
+              "caching": "None",
+              "createOption": "Empty",
+              "managedDisk": {
+                "storageAccountType": "[parameters('storageAccountType')]"
+              }
+            },
+            {
+              "diskSizeGB": "[parameters('ossDiskSize')]",
+              "lun": 2,
+              "caching": "None",
+              "createOption": "Empty",
+              "managedDisk": {
+                "storageAccountType": "[parameters('storageAccountType')]"
+              }
+            }
+          ]
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces',concat(parameters('vmNamePrefix'), 'oss', copyIndex()))]"
+            }
+          ]
+        },
+        "diagnosticsProfile": {
+          "bootDiagnostics": {
+            "enabled": "true",
+            "storageUri": "[concat('http://', variables('diagnosticsStorageAccount'), '.blob.core.windows.net')]"
+          }
+        }
+      }
+    },
+    {
+      "apiVersion": "[variables('apiVersions').compute.virtualMachineExtensions]",
+      "type": "Microsoft.Compute/virtualMachines/extensions",
+      "name": "[concat(parameters('vmNamePrefix'), 'oss', copyIndex(), '/init')]",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "[concat('Microsoft.Compute/virtualMachines/', concat(parameters('vmNamePrefix'), 'oss', copyIndex()))]",
+        "[concat('Microsoft.Compute/virtualMachines/', parameters('vmNamePrefix'), 'mds', '/extensions/init')]"
+      ],
+      "copy": {
+        "name": "ossExtensionsCopy",
+        "count": "[parameters('ossCount')]"
+      },
+      "tags": {
+        "provider": "[toUpper(parameters('providerTags').provider)]"
+      },
+      "properties": {
+        "publisher": "Microsoft.Azure.Extensions",
+        "type": "CustomScript",
+        "typeHandlerVersion": "2.0",
+        "autoUpgradeMinorVersion": true,
+        "settings": {
+          "fileUris": [
+            "[variables('scriptUrlLustre')]"
+          ],
+          "commandToExecute": "[concat('sh lustre.sh', ' -n OSS', ' -i ', copyIndex(), ' -d ', variables('ossDiskCount'), ' -m ', reference(resourceId('Microsoft.Network/networkInterfaces', concat(parameters('vmNamePrefix'), 'mgs'))).ipConfigurations[0].properties.privateIPAddress, ' -l ', reference(resourceId('Microsoft.Network/networkInterfaces', concat(parameters('vmNamePrefix'), 'oss', copyIndex()))).ipConfigurations[0].properties.privateIPAddress, ' -f ', parameters('filesystemName'))]"
+        }
+      }
+    },
+    {
+      "apiVersion": "[variables('apiVersions').resources.deployments]",
+      "type": "Microsoft.Resources/deployments",
+      "name": "monitoring",
+      "dependsOn": [
+        "[concat('Microsoft.Compute/virtualMachines/', concat(parameters('vmNamePrefix'), 'oss0', '/extensions/init'))]"
+      ],
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "contentVersion": "1.0.0.0",
+          "uri": "[variables('templateUrlMonitoring')]"
+        },
+        "parameters": {
+          "apiVersions": {
+            "value": "[variables('apiVersions')]"
+          },
+          "providerTags": {
+            "value": "[parameters('providerTags')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "vmNamePrefix": {
+            "value": "[parameters('vmNamePrefix')]"
+          },
+          "ossCount": {
+            "value": "[parameters('ossCount')]"
+          },
+          "filesystemName": {
+            "value": "[parameters('filesystemName')]"
+          },
+          "scriptUrlMonitoring": {
+            "value": "[variables('scriptUrlMonitoring')]"
+          },
+          "mgsip": {
+            "value": "[reference(resourceId('Microsoft.Network/networkInterfaces', concat(parameters('vmNamePrefix'), 'mgs'))).ipConfigurations[0].properties.privateIPAddress]"
+          },
+          "mdsip0": {
+            "value": "[reference(resourceId('Microsoft.Network/networkInterfaces', concat(parameters('vmNamePrefix'), 'mds'))).ipConfigurations[0].properties.privateIPAddress]"
+          },
+          "ossip0": {
+            "value": "[reference(resourceId('Microsoft.Network/networkInterfaces', concat(parameters('vmNamePrefix'), 'oss0'))).ipConfigurations[0].properties.privateIPAddress]"
+          }
+        }
+      }
+    }
+  ],
+  "outputs": {
+    "mgsNID": {
+      "type": "string",
+      "value": "[concat('',reference(resourceId('Microsoft.Network/networkInterfaces', concat(parameters('vmNamePrefix'), 'mgs'))).ipConfigurations[0].properties.privateIPAddress)]",
+      "metadata": {
+        "description": "MGS node private IP address and NID."
+      }
+    },
+    "mgsDomainName": {
+      "type": "string",
+      "value": "[reference('publicIP').outputs.fqdn.value]",
+      "metadata": {
+        "description": "SSH to the MGS node using this public IP address and run command 'ltop' to view Lustre Monitoring Tool"
+      }
+    },
+    "gangliaUrl": {
+      "type": "string",
+      "value": "[concat('http://',reference('publicIP').outputs.fqdn.value,'/ganglia/')]",
+      "metadata": {
+        "description": "URL to access Ganglia Monitoring System on the MGS node"
+      }
+    },
+    "mountCommand": {
+      "type": "string",
+      "value": "[concat('mount -t lustre ',reference(resourceId('Microsoft.Network/networkInterfaces', concat(parameters('vmNamePrefix'), 'mgs'))).ipConfigurations[0].properties.privateIPAddress,'@tcp:/',parameters('filesystemName'),' /your_mount_point_directory')]",
+      "metadata": {
+        "description": "Command to execute on the Lustre clients to mount the filesystem"
+      }
+    }
+  }
+}
