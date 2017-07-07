@@ -61,6 +61,13 @@
         "description": "Storage account type (e.g. Premium_LRS or Standard_LRS)"
       }
     },
+    "dataDiskCaching": {
+      "type": "string",
+      "defaultValue": "None",
+      "metadata": {
+        "description": "Data disk caching None or ReadOnly"
+      }
+    },
     "vmNamePrefix": {
       "type": "string",
       "defaultValue": "lustre",
@@ -120,30 +127,34 @@
     "publicIPAddressName": {
       "type": "string",
       "defaultValue": "publicip-lustre",
-      "metadata": { "description": "Public IP Address name" }
+      "metadata": {
+        "description": "Public IP Address name"
+      }
     },
     "publicIPAddressDomainNameLabel": {
       "type": "string",
       "defaultValue": "",
-      "metadata": { "description": "Public IP DNS label" }
+      "metadata": {
+        "description": "Public IP DNS label"
+      }
     },
     "mgsVmSize": {
       "type": "string",
-      "defaultValue": "Standard_DS2",
+      "defaultValue": "Standard_DS2_v2",
       "metadata": {
         "description": "Size of the Management Server (MGS) that stores configuration information for all Lustre filesystems in a cluster."
       }
     },
     "mdsVmSize": {
       "type": "string",
-      "defaultValue": "Standard_DS2",
+      "defaultValue": "Standard_DS2_v2",
       "metadata": {
         "description": "Size of the Metadata Server (MDS) that makes metadata (e.g. files, directories, permissions) available to Lustre clients"
       }
     },
     "ossVmSize": {
       "type": "string",
-      "defaultValue": "Standard_DS3",
+      "defaultValue": "Standard_DS3_v2",
       "metadata": {
         "description": "Size of the Object Storage Server (OSS) that provides file I/O service and network request handling for one or more attached disks referred to as Object Storage Target (OST)"
       }
@@ -159,7 +170,14 @@
       "type": "int",
       "defaultValue": 128,
       "metadata": {
-        "description": "Size of the data disks to use for the OSTs. All OSS instances have 3 data disks attached."
+        "description": "Size of the data disks to use for the OSTs. All OSS instances have ossDiskCount data disks attached."
+      }
+    },
+    "ossDiskCount": {
+      "type": "int",
+      "defaultValue": 3,
+      "metadata": {
+        "description": "The number of data disks to attach for the OSS servers"
       }
     },
     "filesystemName": {
@@ -235,28 +253,57 @@
         "deployments": "2016-09-01"
       },
       "storage": {
-        "storageAccounts": "2016-05-01"
+        "storageAccounts": "2017-06-01"
       },
       "network": {
-        "virtualNetworks": "2016-09-01",
-        "networkInterfaces": "2016-09-01",
-        "loadBalancers": "2016-09-01",
-        "publicIPAddresses": "2016-09-01",
-        "networkSecurityGroups": "2016-09-01"
+        "virtualNetworks": "2017-04-01",
+        "networkInterfaces": "2017-04-01",
+        "loadBalancers": "2017-04-01",
+        "publicIPAddresses": "2017-04-01",
+        "networkSecurityGroups": "2017-04-01"
       },
       "compute": {
-        "availabilitySets": "2016-04-30-preview",
-        "virtualMachines": "2016-04-30-preview",
-        "virtualMachineExtensions": "2016-04-30-preview",
-        "disks": "2016-04-30-preview",
-        "images": "2016-04-30-preview"
+        "availabilitySets": "2017-03-30",
+        "virtualMachines": "2017-03-30",
+        "virtualMachineExtensions": "2017-03-30",
+        "disks": "2017-03-30",
+        "images": "2017-03-30",
+        "snapshots": "2017-03-30"
       }
     },
+    "faultDomainRegion": {
+      "eastus": "3",
+      "eastus2": "3",
+      "westus": "3",
+      "westus2": "2",
+      "centralus": "3",
+      "northcentralus": "3",
+      "southcentralus": "3",
+      "westcentralus": "2",
+      "canadacentral": "2",
+      "canadaeast": "2",
+      "northeurope": "3",
+      "westeurope": "3",
+      "uksouth": "2",
+      "ukwest": "2",
+      "eastasia": "2",
+      "southeastasia": "2",
+      "japaneast": "2",
+      "japanwest": "2",
+      "southindia": "2",
+      "centralindia": "2",
+      "westindia": "2",
+      "austrailiaeast": "2",
+      "austrailiasoutheast": "2",
+      "brazilsouth": "2",
+      "koreacentral": "2",
+      "koreasouth": "2"
+    },
+    "faultDomain": "[variables('faultDomainRegion')[parameters('location')]]",
     "ossAvailabilitySetSettings": {
       "name": "[concat(parameters('vmNamePrefix'),'oss')]",
-      "faultDomainCount": "3",
-      "updateDomainCount": "5",
-      "managed": true
+      "faultDomainCount": "[variables('faultDomain')]",
+      "updateDomainCount": "20"
     },
     "baseUrl": "[concat(parameters('artifactsBaseUrl'),'/')]",
     "scriptUrlLustre": "[concat(variables('baseUrl'),'lustre.sh')]",
@@ -277,17 +324,14 @@
         ]
       }
     },
-    "linuxConfiguration_password": { },
+    "linuxConfiguration_password": {},
     "linuxConfiguration": "[variables(concat('linuxConfiguration_',parameters('authenticationType')))]",
     "publicIPID": "[resourceId(parameters('publicIPAddressResourceGroup'), 'Microsoft.Network/publicIPAddresses', parameters('publicIPAddressName'))]",
     "vnetID": "[resourceId(parameters('vnetResourceGroup'), 'Microsoft.Network/virtualNetworks', parameters('vnetName'))]",
     "subnetServersID": "[concat(variables('vnetID'), '/subnets/', parameters('subnetServersName'))]",
     "subnetClientsID": "[concat(variables('vnetID'), '/subnets/', parameters('subnetClientsName'))]",
-    "mgsStorageAccountNumber": "1",
-    "mdsStorageAccountNumber": "1",
-    "mgsDiskCount": "2",
-    "mdsDiskCount": "1",
-    "ossDiskCount": "3",
+    "mgsDiskCount": 2,
+    "mdsDiskCount": 1,
     "diagnosticsStorageAccount": "[concat('d',uniqueString(resourceGroup().id,'d'),parameters('vmNamePrefix'))]"
   },
   "resources": [
@@ -332,8 +376,7 @@
       "tags": {
         "provider": "[toUpper(parameters('providerTags').provider)]"
       },
-      "properties": {
-      }
+      "properties": {}
     },
     {
       "apiVersion": "[variables('apiVersions').resources.deployments]",
@@ -389,8 +432,10 @@
       },
       "properties": {
         "platformFaultDomainCount": "[variables('ossAvailabilitySetSettings').faultDomainCount]",
-        "platformUpdateDomainCount": "[variables('ossAvailabilitySetSettings').updateDomainCount]",
-        "managed": "[variables('ossAvailabilitySetSettings').managed]"
+        "platformUpdateDomainCount": "[variables('ossAvailabilitySetSettings').updateDomainCount]"
+      },
+      "sku": {
+        "name": "Aligned"
       }
     },
     {
@@ -483,29 +528,26 @@
             "id": "[resourceId(parameters('imageResourceGroup'), 'Microsoft.Compute/images', parameters('imageName'))]"
           },
           "osDisk": {
+            "name": "[concat(parameters('vmNamePrefix'), 'mgs', '-osdisk')]",
             "caching": "ReadWrite",
             "createOption": "FromImage",
             "managedDisk": {
               "storageAccountType": "[parameters('storageAccountType')]"
             }
           },
-          "dataDisks": [
+          "copy": [
             {
-              "diskSizeGB": "128",
-              "lun": 0,
-              "caching": "None",
-              "createOption": "Empty",
-              "managedDisk": {
-                "storageAccountType": "[parameters('storageAccountType')]"
-              }
-            },
-            {
-              "diskSizeGB": "128",
-              "lun": 1,
-              "caching": "None",
-              "createOption": "Empty",
-              "managedDisk": {
-                "storageAccountType": "[parameters('storageAccountType')]"
+              "name": "dataDisks",
+              "count": "[variables('mgsDiskCount')]",
+              "input": {
+                "name": "[concat(parameters('vmNamePrefix'), 'mgs', '-datadisk', copyIndex('dataDisks'))]",
+                "diskSizeGB": "128",
+                "lun": "[copyIndex('dataDisks')]",
+                "createOption": "Empty",
+                "caching": "ReadOnly",
+                "managedDisk": {
+                  "storageAccountType": "[parameters('storageAccountType')]"
+                }
               }
             }
           ]
@@ -604,20 +646,26 @@
             "id": "[resourceId(parameters('imageResourceGroup'), 'Microsoft.Compute/images', parameters('imageName'))]"
           },
           "osDisk": {
+            "name": "[concat(parameters('vmNamePrefix'), 'mds', '-osdisk')]",
             "caching": "ReadWrite",
             "createOption": "FromImage",
             "managedDisk": {
               "storageAccountType": "[parameters('storageAccountType')]"
             }
           },
-          "dataDisks": [
+          "copy": [
             {
-              "diskSizeGB": "128",
-              "lun": 0,
-              "caching": "None",
-              "createOption": "Empty",
-              "managedDisk": {
-                "storageAccountType": "[parameters('storageAccountType')]"
+              "name": "dataDisks",
+              "count": "[variables('mdsDiskCount')]",
+              "input": {
+                "name": "[concat(parameters('vmNamePrefix'), 'mds', '-datadisk', copyIndex('dataDisks'))]",
+                "diskSizeGB": "128",
+                "lun": "[copyIndex('dataDisks')]",
+                "createOption": "Empty",
+                "caching": "ReadOnly",
+                "managedDisk": {
+                  "storageAccountType": "[parameters('storageAccountType')]"
+                }
               }
             }
           ]
@@ -728,35 +776,26 @@
             "id": "[resourceId(parameters('imageResourceGroup'), 'Microsoft.Compute/images', parameters('imageName'))]"
           },
           "osDisk": {
+            "name": "[concat(parameters('vmNamePrefix'), 'oss', copyIndex(), '-osdisk')]",
             "caching": "ReadWrite",
-            "createOption": "FromImage"
+            "createOption": "FromImage",
+            "managedDisk": {
+              "storageAccountType": "[parameters('storageAccountType')]"
+            }
           },
-          "dataDisks": [
+          "copy": [
             {
-              "diskSizeGB": "[parameters('ossDiskSize')]",
-              "lun": 0,
-              "caching": "None",
-              "createOption": "Empty",
-              "managedDisk": {
-                "storageAccountType": "[parameters('storageAccountType')]"
-              }
-            },
-            {
-              "diskSizeGB": "[parameters('ossDiskSize')]",
-              "lun": 1,
-              "caching": "None",
-              "createOption": "Empty",
-              "managedDisk": {
-                "storageAccountType": "[parameters('storageAccountType')]"
-              }
-            },
-            {
-              "diskSizeGB": "[parameters('ossDiskSize')]",
-              "lun": 2,
-              "caching": "None",
-              "createOption": "Empty",
-              "managedDisk": {
-                "storageAccountType": "[parameters('storageAccountType')]"
+              "name": "dataDisks",
+              "count": "[parameters('ossDiskCount')]",
+              "input": {
+                "name": "[concat(parameters('vmNamePrefix'), 'oss', copyIndex('ossVmCopy'), '-datadisk', copyIndex('dataDisks'))]",
+                "diskSizeGB": "[parameters('ossDiskSize')]",
+                "lun": "[copyIndex('dataDisks')]",
+                "createOption": "Empty",
+                "caching": "[parameters('dataDiskCaching')]",
+                "managedDisk": {
+                  "storageAccountType": "[parameters('storageAccountType')]"
+                }
               }
             }
           ]
@@ -801,7 +840,7 @@
           "fileUris": [
             "[variables('scriptUrlLustre')]"
           ],
-          "commandToExecute": "[concat('sh lustre.sh', ' -n OSS', ' -i ', copyIndex(), ' -d ', variables('ossDiskCount'), ' -m ', reference(resourceId('Microsoft.Network/networkInterfaces', concat(parameters('vmNamePrefix'), 'mgs'))).ipConfigurations[0].properties.privateIPAddress, ' -l ', reference(resourceId('Microsoft.Network/networkInterfaces', concat(parameters('vmNamePrefix'), 'oss', copyIndex()))).ipConfigurations[0].properties.privateIPAddress, ' -f ', parameters('filesystemName'))]"
+          "commandToExecute": "[concat('sh lustre.sh', ' -n OSS', ' -i ', copyIndex(), ' -d ', parameters('ossDiskCount'), ' -m ', reference(resourceId('Microsoft.Network/networkInterfaces', concat(parameters('vmNamePrefix'), 'mgs'))).ipConfigurations[0].properties.privateIPAddress, ' -l ', reference(resourceId('Microsoft.Network/networkInterfaces', concat(parameters('vmNamePrefix'), 'oss', copyIndex()))).ipConfigurations[0].properties.privateIPAddress, ' -f ', parameters('filesystemName'))]"
         }
       }
     },

@@ -38,11 +38,17 @@
     "mdsVmSize": {
       "value": "Standard_DS2_v2"
     },
+    "ossVmSize": {
+      "value": "Standard_DS3_v2"
+    },
     "ossCount": {
       "value": 2
     },
     "ossDiskSize": {
       "value": 128
+    },
+    "ossDiskCount": {
+      "value": 3
     }
   }
 }
